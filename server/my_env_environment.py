@@ -24,10 +24,18 @@ except ImportError:
 
 
 MAX_ATTEMPTS = 2
+MIN_SCORE = 0.01
+MAX_SCORE = 0.99
 
 
 def _normalize_text(value: str) -> str:
     return " ".join(value.lower().replace("_", " ").replace("-", " ").split())
+
+
+def _strict_score(value: float) -> float:
+    """Clamp scores to the open interval (0, 1)."""
+
+    return round(min(MAX_SCORE, max(MIN_SCORE, value)), 4)
 
 
 class MyEnvironment(Environment):
@@ -55,7 +63,7 @@ class MyEnvironment(Environment):
     def reset(self) -> MyObservation:
         self._state = State(episode_id=str(uuid4()), step_count=0, done=False)
         self.current_task = self._pick_task()
-        self.best_score = 0.0
+        self.best_score = MIN_SCORE
         public = public_task_view(self.current_task)
         return MyObservation(
             **public,
@@ -64,8 +72,8 @@ class MyEnvironment(Environment):
                 "You have up to 2 attempts. Strong submissions identify concrete issues, "
                 "calibrate severity, explain impact, and propose tests."
             ),
-            reward=0.0,
-            cumulative_reward=0.0,
+            reward=MIN_SCORE,
+            cumulative_reward=MIN_SCORE,
             done=False,
             remaining_attempts=MAX_ATTEMPTS,
             metadata={"step": 0},
@@ -84,8 +92,8 @@ class MyEnvironment(Environment):
             return MyObservation(
                 **public,
                 feedback=parse_feedback,
-                reward=0.0,
-                cumulative_reward=self.best_score,
+                reward=MIN_SCORE if self._state.step_count == 1 else 0.0,
+                cumulative_reward=_strict_score(self.best_score),
                 done=done,
                 remaining_attempts=max(0, MAX_ATTEMPTS - self._state.step_count),
                 metadata={
@@ -97,7 +105,7 @@ class MyEnvironment(Environment):
 
         total_score, breakdown, feedback = self._grade_submission(parsed_review)
         reward_delta = max(0.0, round(total_score - self.best_score, 4))
-        self.best_score = max(self.best_score, total_score)
+        self.best_score = _strict_score(max(self.best_score, total_score))
 
         done = self.best_score >= 0.85 or self._state.step_count >= MAX_ATTEMPTS
         self._state.done = done
@@ -106,7 +114,7 @@ class MyEnvironment(Environment):
             **public,
             feedback=feedback,
             reward=reward_delta,
-            cumulative_reward=self.best_score,
+            cumulative_reward=_strict_score(self.best_score),
             done=done,
             remaining_attempts=max(0, MAX_ATTEMPTS - self._state.step_count),
             metadata={
@@ -224,20 +232,14 @@ class MyEnvironment(Environment):
 
         false_positive_penalty = round(min(0.25, 0.08 * len(unmatched_candidates)), 4)
 
-        total_score = round(
-            max(
-                0.0,
-                min(
-                    1.0,
-                    0.60 * issue_score
-                    + 0.15 * summary_score
-                    + 0.15 * test_score
-                    + 0.10 * confidence_score
-                    - false_positive_penalty,
-                ),
-            ),
-            4,
+        raw_total_score = (
+            0.60 * issue_score
+            + 0.15 * summary_score
+            + 0.15 * test_score
+            + 0.10 * confidence_score
+            - false_positive_penalty
         )
+        total_score = _strict_score(raw_total_score)
 
         breakdown = {
             "issue_score": issue_score,
