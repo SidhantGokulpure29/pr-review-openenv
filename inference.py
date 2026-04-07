@@ -168,12 +168,32 @@ def main() -> None:
     args = parser.parse_args()
 
     api_base_url = os.getenv("API_BASE_URL")
-    model_name = os.getenv("MODEL_NAME")
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
-    use_llm = bool(model_name and api_key)
-    client_kwargs: dict[str, Any] = {"api_key": api_key} if api_key else {}
-    if api_base_url:
-        client_kwargs["base_url"] = api_base_url
+    model_name = os.getenv("MODEL_NAME", "gpt-5.4-mini")
+
+    # The hackathon validator injects API_BASE_URL + API_KEY and expects all
+    # model traffic to go through that proxy. Prefer those values first.
+    injected_api_key = os.getenv("API_KEY")
+    fallback_api_key = os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
+
+    if api_base_url and injected_api_key:
+        api_key = injected_api_key
+        client_kwargs: dict[str, Any] = {
+            "base_url": api_base_url,
+            "api_key": api_key,
+        }
+        mode = "litellm-proxy"
+    elif fallback_api_key:
+        api_key = fallback_api_key
+        client_kwargs = {"api_key": api_key}
+        if api_base_url:
+            client_kwargs["base_url"] = api_base_url
+        mode = "openai-client"
+    else:
+        api_key = None
+        client_kwargs = {}
+        mode = "heuristic-fallback"
+
+    use_llm = bool(api_key)
     client = OpenAI(**client_kwargs) if use_llm else None
 
     run_id = str(uuid.uuid4())
@@ -182,8 +202,8 @@ def main() -> None:
         {
             "run_id": run_id,
             "base_url": args.base_url,
-            "model_name": model_name or "heuristic-baseline",
-            "mode": "openai-client" if use_llm else "heuristic-fallback",
+            "model_name": model_name if use_llm else "heuristic-baseline",
+            "mode": mode,
             "timestamp": int(time.time()),
         },
     )
