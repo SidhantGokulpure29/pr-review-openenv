@@ -159,7 +159,24 @@ Focus on concrete review findings, severity, impact, and regression tests.
         temperature=0.1,
     )
     text = getattr(response, "output_text", "") or ""
-    return json.loads(text)
+    return parse_review_json(text)
+
+
+def parse_review_json(raw_text: str) -> dict[str, Any]:
+    """Parse model output into the expected review payload."""
+
+    text = raw_text.strip()
+    if not text:
+        raise ValueError("Model returned empty output")
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            return json.loads(text[start : end + 1])
+        raise
 
 
 def main() -> None:
@@ -218,7 +235,30 @@ def main() -> None:
 
             for attempt in range(1, 3):
                 if use_llm and client is not None:
-                    review_payload = llm_review(observation, client, model_name, observation.feedback)
+                    try:
+                        review_payload = llm_review(
+                            observation,
+                            client,
+                            model_name,
+                            observation.feedback,
+                        )
+                    except Exception as exc:
+                        log_event(
+                            "STEP",
+                            {
+                                "run_id": run_id,
+                                "episode": episode_index,
+                                "attempt": attempt,
+                                "task_id": observation.task_id,
+                                "difficulty": observation.difficulty,
+                                "fallback_reason": f"{type(exc).__name__}: {exc}",
+                                "mode": "heuristic-fallback",
+                            },
+                        )
+                        review_payload = heuristic_review(
+                            observation.diff_text,
+                            observation.feedback,
+                        )
                 else:
                     review_payload = heuristic_review(observation.diff_text, observation.feedback)
 
