@@ -92,19 +92,19 @@ class MyEnvironment(Environment):
             return MyObservation(
                 **public,
                 feedback=parse_feedback,
-                reward=MIN_SCORE if self._state.step_count == 1 else 0.0,
+                reward=MIN_SCORE,
                 cumulative_reward=_strict_score(self.best_score),
                 done=done,
                 remaining_attempts=max(0, MAX_ATTEMPTS - self._state.step_count),
                 metadata={
                     "step": self._state.step_count,
                     "valid_json": False,
-                    "invalid_submission_penalty": 0.0,
+                    "task_score": _strict_score(self.best_score),
                 },
             )
 
         total_score, breakdown, feedback = self._grade_submission(parsed_review)
-        reward_delta = max(0.0, round(total_score - self.best_score, 4))
+        reward_delta = _strict_score(max(total_score - self.best_score, MIN_SCORE))
         self.best_score = _strict_score(max(self.best_score, total_score))
 
         done = self.best_score >= 0.85 or self._state.step_count >= MAX_ATTEMPTS
@@ -119,8 +119,9 @@ class MyEnvironment(Environment):
             remaining_attempts=max(0, MAX_ATTEMPTS - self._state.step_count),
             metadata={
                 "step": self._state.step_count,
-                "score_breakdown": breakdown,
                 "valid_json": True,
+                "task_score": _strict_score(self.best_score),
+                "grader_name": "deterministic_pr_review_grader",
             },
         )
 
@@ -175,13 +176,12 @@ class MyEnvironment(Environment):
 
         severity_score = 1.0 if _normalize_text(candidate.get("severity", "")) == _normalize_text(expected["severity"]) else 0.0
 
-        return round(
+        return _strict_score(
             0.30 * file_score
             + 0.30 * keyword_score
             + 0.20 * explanation_score
             + 0.10 * fix_score
             + 0.10 * severity_score,
-            4,
         )
 
     def _grade_submission(self, review: dict[str, Any]) -> tuple[float, dict[str, float], str]:
@@ -209,28 +209,30 @@ class MyEnvironment(Environment):
             else:
                 matched_scores.append(0.0)
 
-        issue_score = round(sum(matched_scores) / len(expected_issues), 4)
+        issue_score = _strict_score(sum(matched_scores) / len(expected_issues))
 
         summary_text = _normalize_text(str(review.get("overall_summary", "")))
         summary_hits = sum(
             1 for keyword in self.current_task["summary_keywords"] if _normalize_text(keyword) in summary_text
         )
-        summary_score = round(
-            min(1.0, summary_hits / max(1, len(self.current_task["summary_keywords"]) - 1)),
-            4,
+        summary_score = _strict_score(
+            min(1.0, summary_hits / max(1, len(self.current_task["summary_keywords"]) - 1))
         )
 
         tests_text = _normalize_text(" ".join(str(item) for item in review.get("test_plan", [])))
         test_hits = sum(1 for keyword in self.current_task["test_keywords"] if _normalize_text(keyword) in tests_text)
-        test_score = round(
-            min(1.0, test_hits / max(1, len(self.current_task["test_keywords"]) - 1)),
-            4,
+        test_score = _strict_score(
+            min(1.0, test_hits / max(1, len(self.current_task["test_keywords"]) - 1))
         )
 
         confidence = review.get("confidence", 0)
-        confidence_score = 1.0 if isinstance(confidence, (int, float)) and 0 <= confidence <= 1 else 0.0
+        confidence_score = (
+            _strict_score(1.0)
+            if isinstance(confidence, (int, float)) and 0 <= confidence <= 1
+            else MIN_SCORE
+        )
 
-        false_positive_penalty = round(min(0.25, 0.08 * len(unmatched_candidates)), 4)
+        false_positive_penalty = min(0.25, 0.08 * len(unmatched_candidates))
 
         raw_total_score = (
             0.60 * issue_score
@@ -241,16 +243,7 @@ class MyEnvironment(Environment):
         )
         total_score = _strict_score(raw_total_score)
 
-        breakdown = {
-            "issue_score": issue_score,
-            "summary_score": summary_score,
-            "test_score": test_score,
-            "confidence_score": confidence_score,
-            "false_positive_penalty": false_positive_penalty,
-            "matched_findings": float(matched_count),
-            "expected_findings": float(len(expected_issues)),
-            "total_score": total_score,
-        }
+        breakdown = {"task_score": total_score, "grader_name": "deterministic_pr_review_grader"}
 
         missed = len(expected_issues) - matched_count
         feedback_parts = [
