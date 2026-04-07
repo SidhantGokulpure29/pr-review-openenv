@@ -266,3 +266,26 @@ def public_task_view(task: dict[str, Any]) -> dict[str, Any]:
         "changed_files": task["changed_files"],
         "review_schema": REVIEW_OUTPUT_SCHEMA,
     }
+
+
+def build_reference_review(task: dict[str, Any]) -> dict[str, Any]:
+    """Return a deterministic reference review payload for grader validation."""
+
+    findings = []
+    for issue in task["expected_findings"]:
+        findings.append(
+            {
+                "file": issue["file"],
+                "severity": issue["severity"],
+                "category": issue["category"],
+                "title": issue["match_keywords"][0].title(),
+                "explanation": " ".join(issue["explanation_keywords"]),
+                "suggested_fix": " ".join(issue["suggested_fix_keywords"]),
+            }
+        )
+    return {
+        "findings": findings,
+        "overall_summary": " ".join(task["summary_keywords"]),
+        "confidence": 0.9,
+        "test_plan": task["test_keywords"],
+    }
