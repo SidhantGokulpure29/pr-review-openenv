@@ -63,8 +63,8 @@ def validate_environment_logic() -> None:
 
         action = type("ActionLike", (), {"review_json": json.dumps(build_gold_review(task))})()
         result_obs = env.step(action)
-        assert 0.0 <= result_obs.reward <= 1.0
-        assert 0.0 <= result_obs.cumulative_reward <= 1.0
+        assert 0.0 < result_obs.reward <= 1.0, f"reward {result_obs.reward} not in (0,1]"
+        assert 0.0 < result_obs.cumulative_reward < 1.0, f"cumulative_reward {result_obs.cumulative_reward} not in (0,1)"
 
 
 def validate_http(base_url: str) -> None:

@@ -1,9 +1,0 @@
-INFO:     Started server process [3012]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8011 (Press CTRL+C to quit)
-D:\Notes\All Materials\Meta_Scaler_Hackathon_2026\my_env\.venv\Lib\site-packages\websockets\legacy\server.py:1178: DeprecationWarning: remove second argument of ws_handler
-  warnings.warn("remove second argument of ws_handler", DeprecationWarning)
-INFO:     127.0.0.1:53132 - "WebSocket /ws" [accepted]
-INFO:     connection open
-INFO:     connection closed

@@ -5,3 +5,24 @@ runtime: fastapi
 app: server.app:app
 port: 8000
 
+tasks:
+  - id: easy-auth-token-leak
+    title: Authentication Helper Cleanup
+    difficulty: easy
+    grader:
+      type: deterministic
+      name: deterministic_pr_review_grader
+
+  - id: medium-billing-idempotency
+    title: Billing Retry Resilience
+    difficulty: medium
+    grader:
+      type: deterministic
+      name: deterministic_pr_review_grader
+
+  - id: hard-export-authorization
+    title: Customer Data Export Endpoint
+    difficulty: hard
+    grader:
+      type: deterministic
+      name: deterministic_pr_review_grader

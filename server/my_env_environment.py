@@ -24,8 +24,9 @@ except ImportError:
 
 
 MAX_ATTEMPTS = 2
-MIN_SCORE = 0.01
-MAX_SCORE = 0.99
+MIN_SCORE = 0.05
+MAX_SCORE = 0.95
+GRADER_NAME = "deterministic_pr_review_grader"
 
 
 def _normalize_text(value: str) -> str:
@@ -76,7 +77,7 @@ class MyEnvironment(Environment):
             cumulative_reward=MIN_SCORE,
             done=False,
             remaining_attempts=MAX_ATTEMPTS,
-            metadata={"step": 0},
+            metadata={"step": 0, "grader_name": GRADER_NAME, "has_grader": True},
         )
 
     def step(self, action: MyAction) -> MyObservation:  # type: ignore[override]
@@ -100,6 +101,8 @@ class MyEnvironment(Environment):
                     "step": self._state.step_count,
                     "valid_json": False,
                     "task_score": _strict_score(self.best_score),
+                    "grader_name": GRADER_NAME,
+                    "has_grader": True,
                 },
             )
 
@@ -121,7 +124,8 @@ class MyEnvironment(Environment):
                 "step": self._state.step_count,
                 "valid_json": True,
                 "task_score": _strict_score(self.best_score),
-                "grader_name": "deterministic_pr_review_grader",
+                "grader_name": GRADER_NAME,
+                "has_grader": True,
             },
         )
 
@@ -243,7 +247,7 @@ class MyEnvironment(Environment):
         )
         total_score = float(_strict_score(raw_total_score))
 
-        breakdown = {"task_score": total_score, "grader_name": "deterministic_pr_review_grader"}
+        breakdown = {"task_score": total_score, "grader_name": GRADER_NAME, "has_grader": True}
 
         missed = len(expected_issues) - matched_count
         feedback_parts = [

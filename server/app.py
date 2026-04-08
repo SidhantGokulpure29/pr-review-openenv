@@ -45,6 +45,8 @@ def list_tasks():
                 "title": task["title"],
                 "difficulty": task["difficulty"],
                 "has_grader": True,
+                "grader_name": "deterministic_pr_review_grader",
+                "grader_type": "deterministic",
             }
             for task in REVIEW_TASKS
         ]
@@ -62,9 +64,12 @@ def grade_task(task_id: str):
     env = MyEnvironment(force_task_id=task_id)
     env.reset()
     score, _, _ = env._grade_submission(build_reference_review(task))
+    clamped = float(min(0.95, max(0.05, score)))
     return {
         "task_id": task_id,
-        "score": float(score),
+        "score": clamped,
+        "has_grader": True,
+        "grader_name": "deterministic_pr_review_grader",
     }
 
 
@@ -77,7 +82,13 @@ def validate_tasks():
         env = MyEnvironment(force_task_id=task["id"])
         env.reset()
         score, _, _ = env._grade_submission(build_reference_review(task))
-        task_scores.append({"task_id": task["id"], "score": float(score)})
+        clamped = float(min(0.95, max(0.05, score)))
+        task_scores.append({
+            "task_id": task["id"],
+            "score": clamped,
+            "has_grader": True,
+            "grader_name": "deterministic_pr_review_grader",
+        })
     return {
         "num_tasks": len(task_scores),
         "task_scores": task_scores,
