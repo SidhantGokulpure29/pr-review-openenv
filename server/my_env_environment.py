@@ -35,7 +35,7 @@ def _normalize_text(value: str) -> str:
 def _strict_score(value: float) -> float:
     """Clamp scores to the open interval (0, 1)."""
 
-    return round(min(MAX_SCORE, max(MIN_SCORE, value)), 4)
+    return float(round(min(MAX_SCORE, max(MIN_SCORE, float(value))), 4))
 
 
 class MyEnvironment(Environment):
@@ -104,7 +104,7 @@ class MyEnvironment(Environment):
             )
 
         total_score, breakdown, feedback = self._grade_submission(parsed_review)
-        reward_delta = _strict_score(max(total_score - self.best_score, MIN_SCORE))
+        reward_delta = float(_strict_score(max(total_score - self.best_score, MIN_SCORE)))
         self.best_score = _strict_score(max(self.best_score, total_score))
 
         done = self.best_score >= 0.85 or self._state.step_count >= MAX_ATTEMPTS
@@ -177,7 +177,7 @@ class MyEnvironment(Environment):
         severity_score = 1.0 if _normalize_text(candidate.get("severity", "")) == _normalize_text(expected["severity"]) else 0.0
 
         return _strict_score(
-            0.30 * file_score
+            0.30 * float(file_score)
             + 0.30 * keyword_score
             + 0.20 * explanation_score
             + 0.10 * fix_score
@@ -209,21 +209,21 @@ class MyEnvironment(Environment):
             else:
                 matched_scores.append(0.0)
 
-        issue_score = _strict_score(sum(matched_scores) / len(expected_issues))
+        issue_score = float(_strict_score(sum(matched_scores) / len(expected_issues)))
 
         summary_text = _normalize_text(str(review.get("overall_summary", "")))
         summary_hits = sum(
             1 for keyword in self.current_task["summary_keywords"] if _normalize_text(keyword) in summary_text
         )
-        summary_score = _strict_score(
+        summary_score = float(_strict_score(
             min(1.0, summary_hits / max(1, len(self.current_task["summary_keywords"]) - 1))
-        )
+        ))
 
         tests_text = _normalize_text(" ".join(str(item) for item in review.get("test_plan", [])))
         test_hits = sum(1 for keyword in self.current_task["test_keywords"] if _normalize_text(keyword) in tests_text)
-        test_score = _strict_score(
+        test_score = float(_strict_score(
             min(1.0, test_hits / max(1, len(self.current_task["test_keywords"]) - 1))
-        )
+        ))
 
         confidence = review.get("confidence", 0)
         confidence_score = (
@@ -241,7 +241,7 @@ class MyEnvironment(Environment):
             + 0.10 * confidence_score
             - false_positive_penalty
         )
-        total_score = _strict_score(raw_total_score)
+        total_score = float(_strict_score(raw_total_score))
 
         breakdown = {"task_score": total_score, "grader_name": "deterministic_pr_review_grader"}
 

@@ -64,8 +64,7 @@ def grade_task(task_id: str):
     score, _, _ = env._grade_submission(build_reference_review(task))
     return {
         "task_id": task_id,
-        "grader_name": "deterministic_pr_review_grader",
-        "score": score,
+        "score": float(score),
     }
 
 
@@ -78,7 +77,7 @@ def validate_tasks():
         env = MyEnvironment(force_task_id=task["id"])
         env.reset()
         score, _, _ = env._grade_submission(build_reference_review(task))
-        task_scores.append({"task_id": task["id"], "score": score})
+        task_scores.append({"task_id": task["id"], "score": float(score)})
     return {
         "num_tasks": len(task_scores),
         "task_scores": task_scores,

@@ -299,11 +299,7 @@ def main() -> None:
                     "run_id": run_id,
                     "episode": episode_index,
                     "task_id": observation.task_id,
-                    "difficulty": observation.difficulty,
-                    "score": final_reward,
-                    "grader_name": observation.metadata.get("grader_name", "deterministic_pr_review_grader"),
-                    "attempts_used": 2 - observation.remaining_attempts,
-                    "status": "completed",
+                    "score": float(final_reward),
                 },
             )
 
