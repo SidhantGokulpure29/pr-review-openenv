@@ -9,6 +9,7 @@ tasks:
   - id: easy-auth-token-leak
     title: Authentication Helper Cleanup
     difficulty: easy
+    has_grader: true
     grader:
       type: deterministic
       name: deterministic_pr_review_grader
@@ -16,6 +17,7 @@ tasks:
   - id: medium-billing-idempotency
     title: Billing Retry Resilience
     difficulty: medium
+    has_grader: true
     grader:
       type: deterministic
       name: deterministic_pr_review_grader
@@ -23,6 +25,7 @@ tasks:
   - id: hard-export-authorization
     title: Customer Data Export Endpoint
     difficulty: hard
+    has_grader: true
     grader:
       type: deterministic
       name: deterministic_pr_review_grader
