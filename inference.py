@@ -293,20 +293,36 @@ def main() -> None:
                 }
             )
 
+            log_event(
+                "END",
+                {
+                    "run_id": run_id,
+                    "episode": episode_index,
+                    "task_id": observation.task_id,
+                    "difficulty": observation.difficulty,
+                    "score": final_reward,
+                    "grader_name": observation.metadata.get("grader_name", "deterministic_pr_review_grader"),
+                    "attempts_used": 2 - observation.remaining_attempts,
+                    "status": "completed",
+                },
+            )
+
     average_score = round(
         sum(item["score"] for item in episode_scores) / max(1, len(episode_scores)),
         4,
     )
 
-    log_event(
-        "END",
-        {
-            "run_id": run_id,
-            "episodes": episode_scores,
-            "num_tasks": len(episode_scores),
-            "average_score": average_score,
-            "status": "completed",
-        },
+    print(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "num_tasks": len(episode_scores),
+                "average_score": average_score,
+                "status": "completed",
+            },
+            sort_keys=True,
+        ),
+        flush=True,
     )
 
 
